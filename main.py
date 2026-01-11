@@ -126,15 +126,13 @@ def get_stats(team:str):
 
 
 @app.get("/predict/{home_team}/{away_team}")
-async def predict(home_team: str, away_team: str, Odds_1: float, Odds_X: float, Odds_2: float):
+async def predict(home_team: str, away_team: str):
     h_team = find_team(home_team)
     a_team = find_team(away_team)
     h_elo = current_elos.get(h_team, 1500)
     a_elo = current_elos.get(a_team, 1500)
-    f = {'Odds_1': Odds_1, 'Odds_X': Odds_X, 'Odds_2': Odds_2}
     h_stats, a_stats = get_stats(h_team), get_stats(a_team)
 
-    
 
     # --- INPUT ---
     input_data = {
@@ -142,16 +140,6 @@ async def predict(home_team: str, away_team: str, Odds_1: float, Odds_X: float, 
         'home_elo': h_elo, 'away_elo': a_elo, 'diff_rest': 0, 
     }
     
-    # Fill Market Odds (Required for this model)
-    imp_h = 1 / f['Odds_1']
-    imp_d = 1 / f['Odds_X']
-    imp_a = 1 / f['Odds_2']
-    m_sum = imp_h + imp_d + imp_a
-    input_data['market_prob_home'] = imp_h / m_sum
-    input_data['market_prob_draw'] = imp_d / m_sum
-    input_data['market_prob_away'] = imp_a / m_sum
-    input_data['has_odds'] = 1
-
     # Fill Features
     for feat in features:
         if feat in input_data: continue
