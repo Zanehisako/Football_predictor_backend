@@ -5,8 +5,10 @@ import pandas as pd
 import numpy as np
 import joblib
 import warnings
+import re
 
 warnings.filterwarnings('ignore')
+
 
 
 # ==============================================================================
@@ -38,23 +40,68 @@ except:
     print("❌ Error loading pickle.")
     exit()
 
-def get_stats(team:str):
-    # collect all unique team names
-    teams = pd.concat([
+
+ALIASES = {
+    "barca": "Barcelona",
+    "fcb": "Barcelona",
+    "man u": "Manchester United",
+    "man utd": "Manchester United",
+    "psg": "Paris Saint Germain",
+    "ath madrid": "Atletico Madrid",
+    "inter": "Inter Milan",
+}
+
+def normalize(s):
+    return re.sub(r'[^a-z0-9 ]', '', s.lower()).strip()
+
+
+def find_team(team):
+    team_n = normalize(team)
+
+    teams_raw = pd.concat([
         df_recent['home_team_name'],
         df_recent['away_team_name']
     ]).unique()
 
-    # find closest match
-    best_match, score, _ = process.extractOne(
-        team.strip().lower(),
-        teams,
-        scorer=fuzz.token_sort_ratio
-    )
-    # if score < 70:
-        # raise ValueError(f"No good match found for '{team}'")
+    teams = {normalize(t): t for t in teams_raw}
 
-    print(f"Matched '{team}' → '{best_match}' (score={score})")
+    # 1️⃣ alias match
+    if team_n in ALIASES:
+        alias = normalize(ALIASES[team_n])
+        if alias in teams:
+            return teams[alias]
+
+    # 2️⃣ exact normalized match
+    if team_n in teams:
+        return teams[team_n]
+
+    # 3️⃣ containment match (very strong signal)
+    for t_n, t in teams.items():
+        if team_n in t_n or t_n in team_n:
+            return t
+
+    # 4️⃣ fuzzy match (STRICT)
+    match, score, _ = process.extractOne(
+        team_n,
+        teams.keys(),
+        scorer=fuzz.token_set_ratio
+    )
+
+    print(f"Fuzzy match: '{team}' → '{teams[match]}' ({score})")
+    if score >= 50:
+        return teams[match]
+
+    return None
+
+
+def get_stats(team:str):
+
+    best_match = find_team(team)
+    if best_match is None:
+        raise ValueError(f"No reliable match for '{team}'")
+
+    print(f"Matched '{team}' → '{best_match}'")
+
 
     rows = df_recent[
         (df_recent['home_team_name'] == best_match) |
@@ -116,7 +163,8 @@ async def predict(home_team: str, away_team: str, Odds_1: float, Odds_X: float, 
     input_df = pd.DataFrame([input_data]).reindex(columns=features, fill_value=0)
     probs = model.predict_proba(input_df)[0]
     p_away, p_draw, p_home = probs[0], probs[1], probs[2]
-    winner = home_team if p_home > p_away else away_team if p_away > p_home else "Draw"
+    winner = home_team if p_home > p_away else away_team if p_away > p_home else "Draw" if p_draw > p_home and p_draw > p_away else "Undecided"
     return {"probabilities": probs.tolist(),
-            "prediction": winner,
+            "prediction": find_team(winner) if winner != "Draw" and winner != "Undecided" else winner,
+            "message": f"match between {find_team(home_team)} and {find_team(away_team)}"
             }
