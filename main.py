@@ -1,13 +1,26 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from rapidfuzz import process, fuzz
 import pandas as pd
 import numpy as np
 import joblib
 import warnings
 
-# ==============================================================================
 warnings.filterwarnings('ignore')
 
+
+# ==============================================================================
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "*",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+# ==============================================================================
 # ==============================================================================
 # 1. LOAD MODEL & DATA
 # ==============================================================================
@@ -25,7 +38,7 @@ except:
     print("❌ Error loading pickle.")
     exit()
 
-def get_stats(team):
+def get_stats(team:str):
     # collect all unique team names
     teams = pd.concat([
         df_recent['home_team_name'],
@@ -34,7 +47,7 @@ def get_stats(team):
 
     # find closest match
     best_match, score, _ = process.extractOne(
-        team,
+        team.strip().lower(),
         teams,
         scorer=fuzz.token_sort_ratio
     )
@@ -60,7 +73,6 @@ def get_stats(team):
             stats[generic_name] = last[col]
     return stats
 
-app = FastAPI()
 
 
 @app.get("/predict/{home_team}/{away_team}")
