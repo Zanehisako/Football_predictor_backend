@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from rapidfuzz import process, fuzz
 import pandas as pd
 import numpy as np
 import joblib
@@ -17,16 +18,35 @@ try:
     current_elos = artifacts['elo_dict']
     df_recent = artifacts['df_recent']
     print(f"✅ Model Loaded. Features: {len(features)}")
-    print("Sample features:", features[:10])
-    print("Sample elos:", list(current_elos.items())[:5])
-    print("Recent data shape:", df_recent['home_team_name'].unique())
+    # print("sample features:", features[:10])
+    # print("sample elos:", list(current_elos.items())[:5])
+    # print("recent data shape:", df_recent['home_team_name'].unique())
 except:
     print("❌ Error loading pickle.")
     exit()
 
 def get_stats(team):
-    print("getting stats for:", team)
-    rows = df_recent[(df_recent['home_team_name'] == team) | (df_recent['away_team_name'] == team)]
+    # collect all unique team names
+    teams = pd.concat([
+        df_recent['home_team_name'],
+        df_recent['away_team_name']
+    ]).unique()
+
+    # find closest match
+    best_match, score, _ = process.extractOne(
+        team,
+        teams,
+        scorer=fuzz.token_sort_ratio
+    )
+    if score < 70:
+        raise ValueError(f"No good match found for '{team}'")
+
+    print(f"Matched '{team}' → '{best_match}' (score={score})")
+
+    rows = df_recent[
+        (df_recent['home_team_name'] == best_match) |
+        (df_recent['away_team_name'] == best_match)
+    ]
     if len(rows) == 0: return None
     last = rows.sort_values('date').iloc[-1]
     prefix = 'home_' if last['home_team_name'] == team else 'away_'
@@ -38,7 +58,6 @@ def get_stats(team):
         if col.startswith(prefix):
             generic_name = col.replace(prefix, '')
             stats[generic_name] = last[col]
-    print(f"extracted stats for {team}:", stats)
     return stats
 
 app = FastAPI()
