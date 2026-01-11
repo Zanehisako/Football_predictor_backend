@@ -4,5 +4,4 @@ rapidfuzz
 pandas
 numpy
 joblib
-re
 warnings
