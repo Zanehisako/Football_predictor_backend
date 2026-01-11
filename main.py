@@ -51,8 +51,8 @@ def get_stats(team:str):
         teams,
         scorer=fuzz.token_sort_ratio
     )
-    if score < 70:
-        raise ValueError(f"No good match found for '{team}'")
+    # if score < 70:
+        # raise ValueError(f"No good match found for '{team}'")
 
     print(f"Matched '{team}' → '{best_match}' (score={score})")
 
@@ -116,4 +116,7 @@ async def predict(home_team: str, away_team: str, Odds_1: float, Odds_X: float, 
     input_df = pd.DataFrame([input_data]).reindex(columns=features, fill_value=0)
     probs = model.predict_proba(input_df)[0]
     p_away, p_draw, p_home = probs[0], probs[1], probs[2]
-    return {"message": f"Predicting match between {home_team} and {away_team}", "probabilities": {"away": p_away, "draw": p_draw, "home": p_home}}
+    winner = home_team if p_home > p_away else away_team if p_away > p_home else "Draw"
+    return {"probabilities": probs.tolist(),
+            "prediction": winner,
+            }
