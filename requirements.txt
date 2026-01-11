@@ -4,3 +4,5 @@ rapidfuzz
 pandas
 numpy
 joblib
+scikit-learn
+xgboost

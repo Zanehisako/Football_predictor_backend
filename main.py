@@ -1,3 +1,5 @@
+from pathlib import Path
+import traceback
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from rapidfuzz import process, fuzz
@@ -8,6 +10,9 @@ import warnings
 import re
 
 warnings.filterwarnings('ignore')
+
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / "models" / "football_model_final.pkl"
 
 
 
@@ -27,18 +32,16 @@ app.add_middleware(
 # 1. LOAD MODEL & DATA
 # ==============================================================================
 try:
-    artifacts = joblib.load('models/football_model_final.pkl')
+    artifacts = joblib.load(MODEL_PATH)
     model = artifacts['model']
     features = artifacts['features']
     current_elos = artifacts['elo_dict']
     df_recent = artifacts['df_recent']
     print(f"✅ Model Loaded. Features: {len(features)}")
-    # print("sample features:", features[:10])
-    # print("sample elos:", list(current_elos.items())[:5])
-    # print("recent data shape:", df_recent['home_team_name'].unique())
-except:
-    print("❌ Error loading pickle.")
-    exit()
+except Exception as e:
+    print("❌ Error loading pickle:")
+    traceback.print_exc()
+    raise RuntimeError("Model failed to load") from e
 
 
 ALIASES = {
@@ -124,10 +127,13 @@ def get_stats(team:str):
 
 @app.get("/predict/{home_team}/{away_team}")
 async def predict(home_team: str, away_team: str, Odds_1: float, Odds_X: float, Odds_2: float):
-    h_team, a_team = home_team, away_team
+    h_team = find_team(home_team)
+    a_team = find_team(away_team)
+    h_elo = current_elos.get(h_team, 1500)
+    a_elo = current_elos.get(a_team, 1500)
     f = {'Odds_1': Odds_1, 'Odds_X': Odds_X, 'Odds_2': Odds_2}
     h_stats, a_stats = get_stats(h_team), get_stats(a_team)
-    h_elo, a_elo = current_elos.get(h_team, 1500), current_elos.get(a_team, 1500)
+
     
 
     # --- INPUT ---
