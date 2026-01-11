@@ -166,5 +166,5 @@ async def predict(home_team: str, away_team: str, Odds_1: float, Odds_X: float, 
     winner ="Draw" if p_draw > p_home and p_draw > p_away else "Undecided" if p_draw > p_home and p_draw > p_away else home_team if p_home > p_away else away_team if p_away > p_home else "Undecided"
     return {"probabilities": probs.tolist(),
             "prediction": find_team(winner) if winner != "Draw" and winner != "Undecided" else winner,
-            "message": f"match between {find_team(home_team)} and {find_team(away_team)}"
+            "message": f"Match between {find_team(home_team)} and {find_team(away_team)}"
             }
