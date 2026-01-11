@@ -163,7 +163,7 @@ async def predict(home_team: str, away_team: str, Odds_1: float, Odds_X: float, 
     input_df = pd.DataFrame([input_data]).reindex(columns=features, fill_value=0)
     probs = model.predict_proba(input_df)[0]
     p_away, p_draw, p_home = probs[0], probs[1], probs[2]
-    winner = home_team if p_home > p_away else away_team if p_away > p_home else "Draw" if p_draw > p_home and p_draw > p_away else "Undecided"
+    winner ="Draw" if p_draw > p_home and p_draw > p_away else "Undecided" if p_draw > p_home and p_draw > p_away else home_team if p_home > p_away else away_team if p_away > p_home else "Undecided"
     return {"probabilities": probs.tolist(),
             "prediction": find_team(winner) if winner != "Draw" and winner != "Undecided" else winner,
             "message": f"match between {find_team(home_team)} and {find_team(away_team)}"
