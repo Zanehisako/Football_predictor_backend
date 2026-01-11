@@ -1,0 +1,8 @@
+fastapi[all]
+uvicorn
+rapidfuzz
+pandas
+numpy
+joblib
+re
+warnings
