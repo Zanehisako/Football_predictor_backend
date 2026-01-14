@@ -124,6 +124,14 @@ def get_stats(team:str):
     return stats
 
 
+@app.get("/teams")
+async def getTeam():
+    teams_raw = pd.concat([
+        df_recent['home_team_name'],
+        df_recent['away_team_name']
+    ]).unique()
+    teams = sorted(list(teams_raw))
+    return {"teams": teams}
 
 @app.get("/predict/{home_team}/{away_team}")
 async def predict(home_team: str, away_team: str):
